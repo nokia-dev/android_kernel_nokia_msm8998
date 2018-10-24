@@ -251,6 +251,10 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(temp_hot),
 	POWER_SUPPLY_ATTR(system_temp_level),
 	POWER_SUPPLY_ATTR(resistance),
+	/* Add more log for debug */
+	POWER_SUPPLY_ATTR(resistance_esr),
+	POWER_SUPPLY_ATTR(resistance_rslow),
+	/* end NB1-7860 */
 	POWER_SUPPLY_ATTR(resistance_capacitive),
 	POWER_SUPPLY_ATTR(resistance_id),
 	POWER_SUPPLY_ATTR(resistance_now),
@@ -288,6 +292,27 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(parallel_disable),
 	POWER_SUPPLY_ATTR(pe_start),
 	POWER_SUPPLY_ATTR(set_ship_mode),
+	/* Change JEITA dynamically */
+	POWER_SUPPLY_ATTR(jeita_diff_fn_en),
+	POWER_SUPPLY_ATTR(jeita_fcc_cool),
+	POWER_SUPPLY_ATTR(jeita_fcc_warm),
+	POWER_SUPPLY_ATTR(jeita_fv_cool),
+	POWER_SUPPLY_ATTR(jeita_fv_warm),
+	/* end NB1-3730 */
+	/* [BAT] Inform Battery Protect AP once the battery can only charge to 4.1V */
+	POWER_SUPPLY_ATTR(jeita_full_capacity_status),
+	POWER_SUPPLY_ATTR(jeita_full_capacity_warm_en),
+	POWER_SUPPLY_ATTR(jeita_full_capacity_cool_en),
+	/* end NB1-8555 */
+	/* Implement the WLC FCC adjust mechansim */
+	POWER_SUPPLY_ATTR(fih_wlc_fcc_en),
+	/* end A1NO-799 */
+	/* Add periodical checker mechanism for charging */
+	POWER_SUPPLY_ATTR(fih_period_checker),
+	/* end A1N-1713 */
+	/* Add battery event for problem report */
+	POWER_SUPPLY_ATTR(monitor_event),
+	/* end NB1-6414 */
 	POWER_SUPPLY_ATTR(soc_reporting_ready),
 	POWER_SUPPLY_ATTR(debug_battery),
 	POWER_SUPPLY_ATTR(fcc_delta),

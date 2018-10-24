@@ -55,6 +55,15 @@
 
 #ifdef CONFIG_DEBUG_FS
 
+/* BBS Log for UFS */
+#define BBOX_UFS_INIT_PWR_REG_FAIL	 	do {printk("BBox;%s: Initialize Power Regulator Failure \n", __func__);	printk("BBox::UEC;52::0\n");} while (0);
+#define BBOX_UFS_REQUEST_IRQ_FAIL 		do {printk("BBox;%s: Request IRQ Failure \n", __func__); 								printk("BBox::UEC;52::1\n");} while (0);
+#define BBOX_UFS_ENABLE_HOST_FAIL 		do {printk("BBox;%s: Enable Host controller Failure \n", __func__);			printk("BBox::UEC;52::2\n");} while (0);
+#define BBOX_UFS_SET_CLK_FAIL 				do {printk("BBox;%s:Set Clock Failure \n", __func__);										printk("BBox::UEC;52::3\n");} while (0);
+#define BBOX_UFS_CTRL_UIC_PWR_FAIL 		do {printk("BBox;%s:Control UIC Power Failure \n", __func__);						printk("BBox::UEC;52::4\n");} while (0);
+#define BBOX_UFS_INIT_UNIPRO_LINK_STARTUP_FAIL do {printk("BBox;%s:Initialize unipro link startup Failure \n", __func__); printk("BBox::UEC;52::5\n");} while (0);
+
+
 static int ufshcd_tag_req_type(struct request *rq)
 {
 	int rq_type = TS_WRITE;
@@ -246,7 +255,11 @@ static u32 ufs_query_desc_max_size[] = {
 	QUERY_DESC_RFU_MAX_SIZE,
 	QUERY_DESC_GEOMETRY_MAZ_SIZE,
 	QUERY_DESC_POWER_MAX_SIZE,
+#ifdef CONFIG_FIH_UFSINFO
+	QUERY_DESC_DEVICE_HEALTH_MAX_SIZE,
+#else
 	QUERY_DESC_RFU_MAX_SIZE,
+#endif	
 };
 
 enum {
@@ -714,7 +727,7 @@ static void ufshcd_print_clk_freqs(struct ufs_hba *hba)
 	list_for_each_entry(clki, head, list) {
 		if (!IS_ERR_OR_NULL(clki->clk) && clki->min_freq &&
 				clki->max_freq)
-			dev_err(hba->dev, "clk: %s, rate: %u\n",
+			dev_err(hba->dev, "BBox;UFS: clk: %s, rate: %u\n",
 					clki->name, clki->curr_freq);
 	}
 }
@@ -750,14 +763,16 @@ static inline void __ufshcd_print_host_regs(struct ufs_hba *hba, bool no_sleep)
 	 * that IORESOURCE_MEM flag is on when xxx_get_resource() is invoked
 	 * during platform/pci probe function.
 	 */
+	dev_err(hba->dev, "BBox;UFS: =========== UFSHCD DUMP (%s)===========\n", __func__);
+
 	ufshcd_hex_dump("host regs: ", hba->mmio_base, UFSHCI_REG_SPACE_SIZE);
-	dev_err(hba->dev, "hba->ufs_version = 0x%x, hba->capabilities = 0x%x",
+	dev_err(hba->dev, "BBox;UFS: hba->ufs_version = 0x%x, hba->capabilities = 0x%x",
 		hba->ufs_version, hba->capabilities);
 	dev_err(hba->dev,
-		"hba->outstanding_reqs = 0x%x, hba->outstanding_tasks = 0x%x",
+		"BBox;UFS: hba->outstanding_reqs = 0x%x, hba->outstanding_tasks = 0x%x",
 		(u32)hba->outstanding_reqs, (u32)hba->outstanding_tasks);
 	dev_err(hba->dev,
-		"last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %d",
+		"BBox;UFS: last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %d",
 		ktime_to_us(hba->ufs_stats.last_hibern8_exit_tstamp),
 		hba->ufs_stats.hibern8_exit_cnt);
 
@@ -1316,6 +1331,7 @@ static int ufshcd_set_clk_freq(struct ufs_hba *hba, bool scale_up)
 					dev_err(hba->dev, "%s: %s clk set rate(%dHz) failed, %d\n",
 						__func__, clki->name,
 						clki->max_freq, ret);
+					BBOX_UFS_SET_CLK_FAIL;
 					break;
 				}
 				trace_ufshcd_clk_scaling(dev_name(hba->dev),
@@ -1333,6 +1349,7 @@ static int ufshcd_set_clk_freq(struct ufs_hba *hba, bool scale_up)
 					dev_err(hba->dev, "%s: %s clk set rate(%dHz) failed, %d\n",
 						__func__, clki->name,
 						clki->min_freq, ret);
+					BBOX_UFS_SET_CLK_FAIL;
 					break;
 				}
 				trace_ufshcd_clk_scaling(dev_name(hba->dev),
@@ -3793,6 +3810,18 @@ int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size)
 	return ufshcd_read_desc(hba, QUERY_DESC_IDN_DEVICE, 0, buf, size);
 }
 
+#ifdef CONFIG_FIH_UFSINFO
+int ufshcd_read_geometry_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_GEOMETRY, 0, buf, size);
+}
+
+int ufshcd_read_device_health_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_RFU_2, 0, buf, size);
+}
+#endif
+
 /**
  * ufshcd_read_string_desc - read string descriptor
  * @hba: pointer to adapter instance
@@ -4299,6 +4328,7 @@ static int ufshcd_uic_pwr_ctrl(struct ufs_hba *hba, struct uic_command *cmd)
 
 out:
 	if (ret) {
+		BBOX_UFS_CTRL_UIC_PWR_FAIL ;
 		ufsdbg_set_err_state(hba);
 		ufshcd_print_host_state(hba);
 		ufshcd_print_pwr_info(hba);
@@ -5036,6 +5066,7 @@ link_startup:
 	ret = ufshcd_make_hba_operational(hba);
 out:
 	if (ret) {
+		BBOX_UFS_INIT_UNIPRO_LINK_STARTUP_FAIL;
 		dev_err(hba->dev, "link startup failed %d\n", ret);
 		ufshcd_print_host_state(hba);
 		ufshcd_print_pwr_info(hba);
@@ -5413,6 +5444,7 @@ ufshcd_transfer_rsp_status(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	case OCS_GENERAL_CRYPTO_ERROR:
 	default:
 		result |= DID_ERROR << 16;
+		printk("BBox::UPD;98::%d::%d\n", ocs, lrbp->task_tag);
 		dev_err(hba->dev,
 				"OCS error from controller = %x for tag %d\n",
 				ocs, lrbp->task_tag);
@@ -8241,6 +8273,7 @@ static int ufshcd_init_clocks(struct ufs_hba *hba)
 			ret = PTR_ERR(clki->clk);
 			dev_err(dev, "%s: %s clk get failed, %d\n",
 					__func__, clki->name, ret);
+			BBOX_UFS_SET_CLK_FAIL;
 			goto out;
 		}
 
@@ -8250,6 +8283,7 @@ static int ufshcd_init_clocks(struct ufs_hba *hba)
 				dev_err(hba->dev, "%s: %s clk set rate(%dHz) failed, %d\n",
 					__func__, clki->name,
 					clki->max_freq, ret);
+				BBOX_UFS_SET_CLK_FAIL;
 				goto out;
 			}
 			clki->curr_freq = clki->max_freq;
@@ -8346,6 +8380,8 @@ out_disable_clks:
 out_disable_hba_vreg:
 	ufshcd_setup_hba_vreg(hba, false);
 out:
+	if (err)
+		BBOX_UFS_INIT_PWR_REG_FAIL;
 	return err;
 }
 
@@ -9933,6 +9969,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED, UFSHCD, hba);
 	if (err) {
 		dev_err(hba->dev, "request irq failed\n");
+		BBOX_UFS_REQUEST_IRQ_FAIL;
 		goto exit_gating;
 	} else {
 		hba->is_irq_enabled = true;
@@ -9957,6 +9994,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	err = ufshcd_hba_enable(hba);
 	if (err) {
 		dev_err(hba->dev, "Host controller enable failed\n");
+		BBOX_UFS_ENABLE_HOST_FAIL;
 		ufshcd_print_host_regs(hba);
 		ufshcd_print_host_state(hba);
 		goto out_remove_scsi_host;

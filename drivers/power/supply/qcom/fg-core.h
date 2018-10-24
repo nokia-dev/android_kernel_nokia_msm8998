@@ -80,6 +80,15 @@
 #define SLOPE_LIMIT_COEFF_MAX		31
 
 #define BATT_THERM_NUM_COEFFS		3
+/* WayneWCShiue - NB1-105 - [BBS] Porting BBS log for battery and charging */
+#define BBS_LOG 1
+#ifdef BBS_LOG
+#define QPNPCHG_BATTERY_MISSING_ERROR do {printk("BBox;%s: Battery missing\n", __func__); printk("BBox::UEC;11::2\n");} while (0)
+#define QPNPFG_READ_ERROR	do {printk("BBox;%s: fg read failed\n", __func__); printk("BBox::UEC;12::2\n");} while (0)
+#define QPNPFG_WRITE_ERROR	do {printk("BBox;%s: fg write failed\n", __func__); printk("BBox::UEC;12::3\n");} while (0)
+#define QPNPFG_BATTERY_VOLTAGE_LOW do {printk("BBox;%s: Voltage low\n", __func__); printk("BBox::UEC;49::3\n");} while (0)
+#endif
+/* end NB1-105 */
 
 #define MAX_CC_STEPS			20
 
@@ -289,6 +298,17 @@ struct fg_batt_props {
 	int		float_volt_uv;
 	int		vbatt_full_mv;
 	int		fastchg_curr_ma;
+	/* WayneWCShiue - NB1-3730 - Change JEITA dynamically */
+	bool	diff_jeita_fn_en;
+	int		jeita_fcc_comp_cool;
+	int		jeita_fcc_comp_warm;
+	int		jeita_fv_comp_cool;
+	int		jeita_fv_comp_warm;
+	/* end NB1-3730 */
+	/* WayneWCShiue - NB1-8555 - [BAT] Inform Battery Protect AP once the battery can only charge to 4.1V */
+	bool		 fih_jeita_full_capacity_warm_en;
+	bool		 fih_jeita_full_capacity_cool_en;
+	/* end NB1-8555 */
 };
 
 struct fg_cyc_ctr_data {
@@ -403,6 +423,7 @@ struct fg_chip {
 	struct mutex		bus_lock;
 	struct mutex		sram_rw_lock;
 	struct mutex		charge_full_lock;
+	spinlock_t		suspend_lock;
 	u32			batt_soc_base;
 	u32			batt_info_base;
 	u32			mem_if_base;
@@ -435,6 +456,7 @@ struct fg_chip {
 	bool			esr_flt_cold_temp_en;
 	bool			slope_limit_en;
 	bool			use_ima_single_mode;
+	bool			suspended;
 	struct completion	soc_update;
 	struct completion	soc_ready;
 	struct delayed_work	profile_load_work;

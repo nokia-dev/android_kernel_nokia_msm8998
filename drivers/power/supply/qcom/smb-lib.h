@@ -195,6 +195,9 @@ struct smb_params {
 	struct smb_chg_param	dc_icl_div2_mid_hv;
 	struct smb_chg_param	dc_icl_div2_hv;
 	struct smb_chg_param	jeita_cc_comp;
+	/* -468 - [BAT] Jeita temperature protection */
+	struct smb_chg_param	jeita_fv_comp;
+	/* end NB1-468 */
 	struct smb_chg_param	freq_buck;
 	struct smb_chg_param	freq_boost;
 };
@@ -298,6 +301,9 @@ struct smb_charger {
 	struct work_struct	legacy_detection_work;
 	struct delayed_work	uusb_otg_work;
 	struct delayed_work	bb_removal_work;
+	/* -3293 - Show battery info */
+	struct delayed_work update_batt_info_work;
+	/* end NB1-3293 */
 
 	/* cached status */
 	int			voltage_min_uv;
@@ -335,6 +341,14 @@ struct smb_charger {
 	u8			float_cfg;
 	bool			use_extcon;
 	bool			otg_present;
+	/* -3293 - Show battery info */
+	bool			show_batt_info_en;
+	bool			fih_chg_abnormal_check_en;
+	u8			fih_reEnable_max_limit;
+	/* end NB1-3293 */
+	/* WayneWCShiue - A1NO-799 - Implement the WLC FCC adjust mechansim */
+	bool			fih_wlc_fcc_en;
+	/* end A1NO-799 */
 
 	/* workaround flag */
 	u32			wa_flags;
@@ -353,6 +367,19 @@ struct smb_charger {
 	/* qnovo */
 	int			usb_icl_delta_ua;
 	int			pulse_cnt;
+
+	/* -3730 - Change JEITA dynamically */
+	bool diff_jeita_fn_en;
+	int	jeita_fcc_comp_cool;
+	int	jeita_fcc_comp_warm;
+	int	jeita_fv_comp_cool;
+	int	jeita_fv_comp_warm;
+	/* end NB1-3730 */
+
+	/* -8555 - [BAT] Inform Battery Protect AP once the battery can only charge to 4.1V */
+	int fih_jeita_full_capacity_warm_en;
+	int fih_jeita_full_capacity_cool_en;
+	/* end NB1-8555 */
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -460,6 +487,18 @@ int smblib_get_prop_usb_current_now(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_typec_cc_orientation(struct smb_charger *chg,
 				union power_supply_propval *val);
+
+/* -8555 - [BAT] Inform Battery Protect AP once the battery can only charge to 4.1V */
+int  FIH_check_chg_status(struct smb_charger *chg);
+void FIH_chg_abnormal_check(struct smb_charger *chg);
+void FIH_chg_reEnable(struct smb_charger *chg);
+void FIH_USBIN_reEnable(struct smb_charger *chg);
+void FIH_soft_JEITA_recharge_check(struct smb_charger *chg);
+/* end NB1-8555 */
+/* -3730 - Change JEITA dynamically */
+void FIH_adjust_JEITA(struct smb_charger *chg);
+/* end NB1-3730 */
+
 int smblib_get_prop_typec_power_role(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_pd_allowed(struct smb_charger *chg,
@@ -520,4 +559,11 @@ int smblib_set_prop_pr_swap_in_progress(struct smb_charger *chg,
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+
+/*  - NB1-680 - Dump typec sts register value */
+#if defined(CONFIG_FIH_NB1) || defined(CONFIG_FIH_A1N)
+int smblib_dump_typec_sts(struct smb_charger *chg,
+			       union power_supply_propval *val);
+#endif
+/* end FIH - NB1-680 */
 #endif /* __SMB2_CHARGER_H */
